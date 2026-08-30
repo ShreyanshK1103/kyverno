@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: stale-report-on-matchconstraints-change
+spec:
+  concurrent: false
+  steps:
+  - name: create deployment and cronjob
+    try:
+    - create:
+        file: deployment.yaml
+    - create:
+        file: cronjob.yaml
+  - name: create policy targeting both kinds
+    try:
+    - create:
+        file: policy.yaml
+    - assert:
+        file: policy-assert.yaml
+  - name: reports exist for both kinds
+    try:
+    - assert:
+        file: report-deployment-assert.yaml
+    - assert:
+        file: report-cronjob-assert.yaml
+  - name: update policy to drop cronjobs from matchConstraints
+    try:
+    - apply:
+        file: policy-update.yaml
+    - assert:
+        file: policy-assert.yaml
+  - name: deployment report is retained, cronjob report is cleaned up
+    try:
+    - assert:
+        file: report-deployment-assert.yaml
+    - error:
+        file: report-cronjob-error.yaml
